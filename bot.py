@@ -26,8 +26,8 @@ except Exception as e:
 def fetch_facebook_posts():
     print(f"🔍 Fetching Facebook page: {FACEBOOK_PAGE_URL} using Scrape.do...")
     try:
-        # Scrape.do API endpoint
-        scrapedo_url = f"https://scrape.do/scrape?url={FACEBOOK_PAGE_URL}&key={SCRAPEDO_API_KEY}&render=true"
+        # CORRECT Scrape.do API endpoint
+        scrapedo_url = f"http://api.scrape.do?url={FACEBOOK_PAGE_URL}&token={SCRAPEDO_API_KEY}&render=true"
         
         response = requests.get(scrapedo_url )
         response.raise_for_status()
@@ -35,7 +35,7 @@ def fetch_facebook_posts():
         soup = BeautifulSoup(response.text, "html.parser")
         posts_data = []
         
-        # Heuristic to find post articles
+        # Find post articles
         potential_posts = soup.find_all("div", {"role": "article"}) 
         if not potential_posts:
             potential_posts = soup.find_all("div", class_=lambda x: x and ("userContent" in x or "story_body_container" in x))
@@ -55,11 +55,11 @@ def fetch_facebook_posts():
             
             full_text = "\n\n".join(filter(None, text_content))
             if full_text or image_urls:
-                post_id = hash(full_text + "".join(image_urls))
+                post_id = str(hash(full_text + "".join(image_urls)))
                 posts_data.append({
-                    "id": str(post_id),
+                    "id": post_id,
                     "text": full_text,
-                    "images": list(set(image_urls)) # Remove duplicates
+                    "images": list(set(image_urls))
                 })
         
         print(f"✅ Found {len(posts_data)} potential posts.")
@@ -102,12 +102,18 @@ def run_bot():
 
     if not new_posts:
         print("idling... No NEW posts found.")
+        if all_fb_posts:
+            latest_id = all_fb_posts[-1]["id"]
+            if latest_id != last_id:
+                with open(last_id_file, "w") as f:
+                    f.write(latest_id)
+                print(f"Synced last_fb_post.txt to latest ID: {latest_id}")
         return
 
     print(f"🚀 Found {len(new_posts)} NEW posts!")
     for post in new_posts:
         media_ids = []
-        for img_url in post["images"][:4]: # Mastodon limit is 4 images
+        for img_url in post["images"][:4]:
             image_data = download_image(img_url)
             if image_data:
                 try:
