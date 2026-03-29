@@ -33,3 +33,12 @@ jobs:
           git add posts.txt last_fb_post.txt
           git commit -m "Update posts and last post ID" || echo "No changes to commit"
           git push
+
+      - name: Commit changes
+        run: |
+          git config --global user.name 'github-actions'
+          git config --global user.email 'github-actions@github.com'
+          git add posts.txt last_fb_post.txt debug_fb.html
+          git commit -m "Update posts and debug info" || echo "No changes to commit"
+          git push
+
