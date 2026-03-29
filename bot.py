@@ -24,10 +24,10 @@ def fetch_facebook_posts():
         posts_data = []
         
         # Find post articles
-        potential_posts = soup.find_all("div", {"role": "article"}) 
+        potential_posts = soup.find_all("div", {"role": "article"})
         if not potential_posts:
             potential_posts = soup.find_all("div", class_=lambda x: x and ("userContent" in x or "story_body_container" in x))
-
+            
         for post_element in potential_posts:
             text_content = []
             image_urls = []
@@ -53,22 +53,22 @@ def fetch_facebook_posts():
         
         print(f"✅ Found {len(posts_data)} potential posts.")
         return posts_data
-
     except Exception as e:
         print(f"❌ Error fetching or parsing Facebook: {e}")
-    return []
+        return []
 
 def run_bot():
     last_id = "0"
     if os.path.exists(LAST_ID_FILE):
         with open(LAST_ID_FILE, "r") as f:
             last_id = f.read().strip()
-
+            
     all_fb_posts = fetch_facebook_posts()
     if not all_fb_posts:
         return
-
-    all_fb_posts.reverse() # Process oldest first
+        
+    # Process oldest first
+    all_fb_posts.reverse()
     
     new_posts = []
     found_last = False
@@ -78,29 +78,31 @@ def run_bot():
             continue
         if found_last or last_id == "0":
             new_posts.append(post)
-
+            
     if not new_posts:
         print("idling... No NEW posts found.")
+        # Sync last_id if we found posts but none were new
+        if all_fb_posts:
+            latest_id = all_fb_posts[-1]["id"]
+            if latest_id != last_id:
+                with open(LAST_ID_FILE, "w") as f:
+                    f.write(latest_id)
+                print(f"Synced last_fb_post.txt to latest ID: {latest_id}")
         return
-
+        
     print(f"🚀 Found {len(new_posts)} NEW posts!")
+    
     with open(POSTS_FILE, "a", encoding="utf-8") as f:
         for post in new_posts:
-            timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-            clean_text = html.unescape(post["text"])
+            f.write(f"--- POST ID: {post['id']} ---\n")
+            f.write(f"TEXT: {post['text']}\n")
+            f.write(f"IMAGES: {', '.join(post['images'])}\n")
+            f.write("-" * 20 + "\n\n")
             
-            f.write(f"--- POST START ({timestamp}) ---\n")
-            f.write(f"ID: {post['id']}\n")
-            f.write(f"TEXT: {clean_text}\n")
-            if post["images"]:
-                f.write(f"IMAGES: {', '.join(post['images'])}\n")
-            f.write(f"--- POST END ---\n\n")
-            
-            print(f"✅ Saved post ID: {post['id']}")
-            
-            # Update the last_id file
-            with open(LAST_ID_FILE, "w") as lf:
-                lf.write(post["id"])
+            # Update last_id
+            with open(LAST_ID_FILE, "w") as f_id:
+                f_id.write(post["id"])
+            print(f"✅ Saved post ID: {post['id']} to {POSTS_FILE}")
 
-if __name__ == \"__main__\":
+if __name__ == '__main__':
     run_bot()
