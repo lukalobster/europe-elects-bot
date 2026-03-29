@@ -1,0 +1,35 @@
+name: Run Europe Elects Bot
+
+on:
+  schedule:
+    - cron: '*/10 * * * *' # Runs every 10 minutes
+  workflow_dispatch:
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install beautifulsoup4 requests
+
+      - name: Run bot
+        env:
+          SCRAPEDO_API_KEY: ${{ secrets.SCRAPEDO_API_KEY }}
+        run: python bot.py
+
+      - name: Commit changes
+        run: |
+          git config --global user.name 'github-actions'
+          git config --global user.email 'github-actions@github.com'
+          git add posts.txt last_fb_post.txt
+          git commit -m "Update posts and last post ID" || echo "No changes to commit"
+          git push
